@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_USER: dev
       POSTGRES_PASSWORD: changeme
-      POSTGRES_DB: coffedb
+      POSTGRES_DB: coffeedb
     ports:
       - "5432:5432"
     volumes:

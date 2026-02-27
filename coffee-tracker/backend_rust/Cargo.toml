@@ -1,0 +1,11 @@
+[package]
+name = "backend_rust"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1", features = ["full"]}
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "postgres", "chrono", "rust_decimal"]}
+dotenvy = "0.15"
+chrono = { version = "0.4", features = ["serde"]}
+rust_decimal = { version = "1.40.0", features = ["db-postgres"] }
