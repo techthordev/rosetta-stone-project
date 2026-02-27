@@ -1,0 +1,40 @@
+# --- OS specific ---
+.DS_Store
+Thumbs.db
+
+# --- Database & Volumes ---
+# Exclude persistent database data
+/coffee-tracker/volumes/
+
+# --- IDEs ---
+# IntelliJ / WebStorm
+.idea/
+*.iml
+*.iws
+
+# Zed
+.zed/
+
+# VS Code
+.vscode/
+
+# --- Build & Dependency Folders ---
+# Go
+/coffee-tracker/backend_go/bin/
+/coffee-tracker/backend_go/vendor/
+*.exe
+*.test
+
+# Rust
+/coffee-tracker/backend_rust/target/
+Cargo.lock
+
+# Spring Boot / Maven / Gradle
+/coffee-tracker/backend_spring/target/
+/coffee-tracker/backend_spring/.gradle/
+/coffee-tracker/backend_spring/build/
+
+# --- Flyway ---
+# Exclude potential local flyway configs or temp files
+*.tmp
+*.bak
