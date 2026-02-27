@@ -5,6 +5,7 @@ This project serves as a practical exploration of database-first development and
 * **Database:** PostgreSQL 18
 * **Migration Tool:** Flyway CLI
 * **Infrastructure:** Podman & Podman Compose
+* **Frontend:** Angular 21+ (Signals-first, Standalone Components)
 
 ## 1. Database Infrastructure (Podman)
 
@@ -20,7 +21,6 @@ To start the database container, run the following command in the project root:
 
 ```bash
 podman compose -f podman-compose.yml up -d
-
 ```
 
 ### Database Configuration
@@ -47,7 +47,6 @@ flyway.url=jdbc:postgresql://localhost:5432/coffeedb
 flyway.user=dev
 flyway.password=changeme
 flyway.locations=filesystem:db/migration
-
 ```
 
 ### Running Migrations
@@ -56,7 +55,6 @@ To apply pending migrations, run:
 
 ```bash
 flyway migrate
-
 ```
 
 ## 3. Backends
@@ -64,41 +62,61 @@ flyway migrate
 All backends use the following environment variable to connect to the database:
 `DATABASE_URL=postgres://dev:changeme@localhost:5432/coffeedb`
 
+| Technology | Port | Directory | Run Command |
+| --- | --- | --- | --- |
+| **Spring Boot 4.0+** | `8080` | `/backend_spring` | `./gradlew bootRun` |
+| **Rust (Axum)** | `8081` | `/backend_rust` | `cargo run` |
+| **Go (Standard Lib)** | `8082` | `/backend_go` | `go run main.go` |
+
 ### 3.1 Spring Boot (Java 25)
 
-Located in `/backend_spring`.
+Utilizes **Virtual Threads** and **Structured Concurrency** for efficient database access.
 
-```bash
-cd backend_spring
-./gradlew bootRun
-
-```
+* **Build Tool:** Gradle (Groovy DSL)
 
 ### 3.2 Go (1.24+)
 
-Located in `/backend_go`.
+Built using the standard `net/http` library and `pgxpool` for high-performance connection pooling.
+
+### 3.3 Rust (1.93+)
+
+Implemented with the **Axum** framework and `sqlx` for asynchronous, compile-time checked SQL queries.
+
+## 4. Frontend (Angular 21+)
+
+Located in `/frontend`. This is a modern **Signals-first** application using standalone components.
+
+### Setup & Run
 
 ```bash
-cd backend_go
-go run main.go
-
+cd frontend
+npm install
+ng serve
 ```
 
-### 3.3 Rust (1.80+)
+The application will be available at `http://localhost:4200`.
 
-Located in `/backend_rust`.
+### Shared Components
+
+The project uses a **Shared Coffee Table** component to ensure a consistent UI regardless of which backend is providing the data.
+
+## 5. Verification
+
+To verify that the backends are serving data, you can use `curl`:
 
 ```bash
-cd backend_rust
-cargo run
+# Test Spring Backend
+curl http://localhost:8080/api/coffees
 
+# Test Rust Backend
+curl http://localhost:8081/api/coffees
+
+# Test Go Backend
+curl http://localhost:8082/api/coffees
 ```
 
-## 4. Verification
-
-To verify that the database is running and migrations have been applied, you can execute a SQL query directly against the container:
+To execute a SQL query directly against the container:
 
 ```bash
 podman exec -it coffee-db psql -U dev -d coffeedb -c "SELECT * FROM coffee;"
-
 ```

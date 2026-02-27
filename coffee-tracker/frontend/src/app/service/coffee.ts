@@ -17,8 +17,8 @@ export class CoffeeService {
 
   private urls = {
     Spring: 'http://localhost:8080/api/coffees',
-    Rust: '',
-    Go: '',
+    Rust: 'http://localhost:8081/api/coffees',
+    Go: 'http://localhost:8082/api/coffees',
   };
 
   getCoffees(backend: 'Rust' | 'Go' | 'Spring'): Observable<Coffee[]> {
