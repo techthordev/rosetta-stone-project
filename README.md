@@ -1,92 +1,164 @@
 # Rosetta Stone Project
 
-This project serves as a practical exploration of database-first development and application interoperability. The goal is to implement the same business logic (a Coffee Tracker) using three different backend technologies while sharing the exact same database schema.
+This project is a practical exploration of database-first development and backend interoperability.
+The same Coffee Tracker business logic is implemented using three different backend technologies, all sharing the exact same PostgreSQL schema.
 
 * **Database:** PostgreSQL 18
-* **Migration Tool:** Flyway CLI
+* **Migration Tool:** Flyway (Containerized)
 * **Infrastructure:** Podman & Podman Compose
 * **Frontend:** Angular 21+ (Signals-first, Standalone Components)
 
-## 1. Database Infrastructure (Podman)
+---
 
-The PostgreSQL database runs in a container managed by Podman.
+# 1. Infrastructure (Podman Compose)
 
-### Prerequisites
+The complete stack (Database + Flyway + all Backends) runs via Podman Compose.
 
-* Podman installed and configured for rootless mode.
+## Prerequisites
 
-### Start the Database
+* Podman (rootless mode recommended)
+* Podman Compose (Docker Compose plugin compatible)
 
-To start the database container, run the following command in the project root:
+---
 
-```bash
-podman compose -f podman-compose.yml up -d
-```
+## Start Everything
 
-### Database Configuration
-
-| Parameter | Value |
-| --- | --- |
-| **Image** | `postgres:18-alpine` |
-| **Container Name** | `coffee-db` |
-| **User** | `dev` |
-| **Password** | `changeme` |
-| **Database Name** | `coffeedb` |
-| **Port** | `5432:5432` |
-
-## 2. Database Migrations (Flyway)
-
-Database schema changes are managed using Flyway CLI.
-
-### Configuration (`flyway.conf`)
-
-Flyway is configured to connect to the local Podman container:
-
-```properties
-flyway.url=jdbc:postgresql://localhost:5432/coffeedb
-flyway.user=dev
-flyway.password=changeme
-flyway.locations=filesystem:db/migration
-```
-
-### Running Migrations
-
-To apply pending migrations, run:
+From the project root:
 
 ```bash
-flyway migrate
+podman compose up -d --build
 ```
 
-## 3. Backends
+This will:
 
-All backends use the following environment variable to connect to the database:
-`DATABASE_URL=postgres://dev:changeme@localhost:5432/coffeedb`
+* Start PostgreSQL
+* Run Flyway migrations
+* Start all three backends
 
-| Technology | Port | Directory | Run Command |
-| --- | --- | --- | --- |
-| **Spring Boot 4.0+** | `8080` | `/backend_spring` | `./gradlew bootRun` |
-| **Rust (Axum)** | `8081` | `/backend_rust` | `cargo run` |
-| **Go (Standard Lib)** | `8082` | `/backend_go` | `go run main.go` |
+To stop and remove volumes:
 
-### 3.1 Spring Boot (Java 25)
+```bash
+podman compose down -v
+```
 
-Utilizes **Virtual Threads** and **Structured Concurrency** for efficient database access.
+---
 
-* **Build Tool:** Gradle (Groovy DSL)
+# 2. Database
 
-### 3.2 Go (1.24+)
+| Parameter | Value                |
+| --------- | -------------------- |
+| Image     | `postgres:18-alpine` |
+| Container | `coffee-db`          |
+| User      | `dev`                |
+| Password  | `changeme`           |
+| Database  | `coffeedb`           |
+| Port      | `5432:5432`          |
 
-Built using the standard `net/http` library and `pgxpool` for high-performance connection pooling.
+---
 
-### 3.3 Rust (1.93+)
+## Verify Database State
 
-Implemented with the **Axum** framework and `sqlx` for asynchronous, compile-time checked SQL queries.
+List tables:
 
-## 4. Frontend (Angular 21+)
+```bash
+podman exec -it coffee-db psql -U dev -d coffeedb -c "\dt"
+```
 
-Located in `/frontend`. This is a modern **Signals-first** application using standalone components.
+Query data:
 
-### Setup & Run
+```bash
+podman exec -it coffee-db psql -U dev -d coffeedb -c "SELECT * FROM coffee;"
+```
+
+---
+
+# 3. Database Migrations (Flyway Container)
+
+Migrations are located in:
+
+```
+db/migration
+```
+
+Example:
+
+```
+V1__create_coffee.sql
+```
+
+Flyway runs automatically on `podman compose up`.
+
+To inspect migration logs:
+
+```bash
+podman logs coffee-migrations
+```
+
+You should see something like:
+
+```
+Successfully applied 1 migration
+```
+
+---
+
+# 4. Backends
+
+All backends connect via container networking:
+
+```
+postgres://dev:changeme@coffee-db:5432/coffeedb
+```
+
+| Technology    | Port | Container                       |
+| ------------- | ---- | ------------------------------- |
+| Spring Boot   | 8080 | coffee-tracker-backend-spring-1 |
+| Rust (Axum)   | 8081 | coffee-tracker-backend-rust-1   |
+| Go (net/http) | 8082 | coffee-tracker-backend-go-1     |
+
+---
+
+## 4.1 Spring Boot (Java 25)
+
+* Virtual Threads
+* Structured Concurrency
+* Hibernate / JPA
+
+---
+
+## 4.2 Go (1.24+)
+
+* Standard `net/http`
+* `pgxpool` connection pooling
+
+---
+
+## 4.3 Rust (Axum)
+
+* Axum framework
+* `sqlx`
+* Async Tokio runtime
+* CORS enabled for Angular dev server
+
+The Rust service binds to:
+
+```
+0.0.0.0:8081
+```
+
+(Required for container port mapping.)
+
+---
+
+# 5. Frontend (Angular 21+)
+
+Located in:
+
+```
+/frontend
+```
+
+Start locally:
 
 ```bash
 cd frontend
@@ -94,29 +166,65 @@ npm install
 ng serve
 ```
 
-The application will be available at `http://localhost:4200`.
+Available at:
 
-### Shared Components
+```
+http://localhost:4200
+```
 
-The project uses a **Shared Coffee Table** component to ensure a consistent UI regardless of which backend is providing the data.
+The frontend can switch between:
 
-## 5. Verification
+* `http://localhost:8080` (Spring)
+* `http://localhost:8081` (Rust)
+* `http://localhost:8082` (Go)
 
-To verify that the backends are serving data, you can use `curl`:
+---
+
+# 6. Verification
+
+Test all backends:
 
 ```bash
-# Test Spring Backend
 curl http://localhost:8080/api/coffees
-
-# Test Rust Backend
 curl http://localhost:8081/api/coffees
-
-# Test Go Backend
 curl http://localhost:8082/api/coffees
 ```
 
-To execute a SQL query directly against the container:
+Example output:
 
-```bash
-podman exec -it coffee-db psql -U dev -d coffeedb -c "SELECT * FROM coffee;"
+Spring:
+
+```json
+[
+  {
+    "createdAt": "2026-02-28T01:08:41.360336",
+    "id": 1,
+    "price": 1.20,
+    "type": "Espresso"
+  }
+]
+```
+
+Rust:
+
+```json
+[
+  {
+    "id": 1,
+    "type": "Espresso",
+    "price": "1.20"
+  }
+]
+```
+
+Go:
+
+```json
+[
+  {
+    "id": 1,
+    "type": "Espresso",
+    "price": 1.2
+  }
+]
 ```

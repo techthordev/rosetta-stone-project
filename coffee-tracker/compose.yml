@@ -1,0 +1,65 @@
+services:
+  coffee-db:
+    image: postgres:18-alpine
+    container_name: coffee-db
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: coffeedb
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d coffeedb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  flyway:
+    image: flyway/flyway:12-alpine
+    container_name: coffee-migrations
+    volumes:
+      - ./db/migration:/flyway/sql:Z
+    command: >
+      -url=jdbc:postgresql://coffee-db:5432/coffeedb
+      -user=dev
+      -password=changeme
+      -connectRetries=60
+      migrate
+    depends_on:
+      coffee-db:
+        condition: service_healthy
+
+  backend-spring:
+    build: ./backend_spring
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://dev:changeme@coffee-db:5432/coffeedb
+    depends_on:
+      flyway:
+        condition: service_completed_successfully
+
+  backend-rust:
+    build: ./backend_rust
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: postgres://dev:changeme@coffee-db:5432/coffeedb
+    depends_on:
+      flyway:
+        condition: service_completed_successfully
+
+  backend-go:
+    build: ./backend_go
+    ports:
+      - "8082:8082"
+    environment:
+      DATABASE_URL: postgres://dev:changeme@coffee-db:5432/coffeedb
+    depends_on:
+      flyway:
+        condition: service_completed_successfully
+
+volumes:
+  db-data:

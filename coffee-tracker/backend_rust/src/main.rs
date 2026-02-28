@@ -43,8 +43,8 @@ async fn main()  {
         .with_state(pool)
         .layer(cors);
     
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:8081").await.unwrap();
-    println!("Server running on http://127.0.0.1:8081");
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8081").await.unwrap();
+    println!("Server running on http://0.0.0.0:8081");
     axum::serve(listener, app).await.unwrap();
 
 }
